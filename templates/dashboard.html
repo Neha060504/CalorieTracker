@@ -1,0 +1,299 @@
+<!--
+  File: dashboard.html - Main Fitness & Calorie Tracker Dashboard
+  
+  WHAT IT DOES:
+  - Visualizes daily nutritional progress: consumed calories vs. daily target progress bar.
+  - Displays water hydration trackers, quick-add meal widgets, and today's activity log.
+  - Renders visual charts showing hourly hydration frequency and net calorie balance.
+  
+  WHY IT IS USED:
+  - Serves as the primary everyday command center for users monitoring their health and diet goals.
+-->
+
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - MyFitness Buddy{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <h1>Welcome back, {{ session['username'] }}!</h1>
+    <p style="color: var(--text-muted); font-size: 1.1rem;">Track your progress and stay on top of your health goals
+        today.</p>
+</div>
+
+<div class="stats-grid">
+    <!-- Calorie Card -->
+    <div class="glass-container stat-card">
+        <div class="stat-header">
+            <div>
+                <h3
+                    style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Calories</h3>
+                <span class="stat-unit">Goal: {{ user['target_calories'] }}</span>
+            </div>
+            <div class="stat-icon">
+                <i data-lucide="flame" style="stroke: #f59e0b;"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ total_calories }}</div>
+        <div class="progress-container">
+            <div class="progress-bar"
+                style="width: {{ (total_calories / user['target_calories'] * 100)|round|int if total_calories < user['target_calories'] else 100 }}%">
+            </div>
+        </div>
+    </div>
+
+    <!-- Water Card -->
+    <div class="glass-container stat-card">
+        <div class="stat-header">
+            <div>
+                <h3
+                    style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Hydration</h3>
+                <span class="stat-unit">Goal: 3000ml</span>
+            </div>
+            <div class="stat-icon">
+                <i data-lucide="droplets" style="stroke: #0ea5e9;"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ total_water }} <span style="font-size: 1.2rem; color: var(--text-muted);">ml</span>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar"
+                style="width: {{ (total_water / 3000 * 100)|round|int if total_water < 3000 else 100 }}%; background: #0ea5e9;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Card -->
+    <div class="glass-container stat-card">
+        <div class="stat-header">
+            <div>
+                <h3
+                    style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Burned</h3>
+                <span class="stat-unit">Today's total</span>
+            </div>
+            <div class="stat-icon">
+                <i data-lucide="zap" style="stroke: #10b981;"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ total_burned }} <span
+                style="font-size: 1.2rem; color: var(--text-muted);">kcal</span></div>
+        <div class="progress-container">
+            <div class="progress-bar" style="width: 100%; background: #10b981;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-top: 2rem;">
+    <!-- Add Meal Quick Action -->
+    <div class="glass-container">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <i data-lucide="utensils" style="width: 20px; height: 20px; color: var(--primary-color);"></i>
+            <h3 class="card-title" style="margin-bottom: 0;">Quick Log: Meal</h3>
+        </div>
+        <form action="/add_meal" method="POST">
+            <div class="form-group">
+                <input type="text" id="meal_name" name="meal_name" placeholder="E.g., Oatmeal" list="food-list" required
+                    autocomplete="off">
+                <datalist id="food-list"></datalist>
+            </div>
+            <div class="form-group">
+                <select name="meal_type">
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snack">Snack</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="number" id="meal_calories" name="calories" placeholder="Calories" required>
+            </div>
+            <button type="submit" class="btn">Add Meal Log</button>
+        </form>
+    </div>
+
+    <!-- Enhanced Water Logger -->
+    <div class="glass-container">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <i data-lucide="cup-soda" style="width: 20px; height: 20px; color: #0ea5e9;"></i>
+            <h3 class="card-title" style="margin-bottom: 0;">Logging Water</h3>
+        </div>
+
+        <form action="/add_water" method="POST">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                <button type="submit" name="amount_ml" value="200" class="btn"
+                    style="background: rgba(14,165,233,0.1); font-size: 0.8rem; padding: 0.5rem;">+200ml</button>
+                <button type="submit" name="amount_ml" value="330" class="btn"
+                    style="background: rgba(14,165,233,0.15); font-size: 0.8rem; padding: 0.5rem;">+330ml</button>
+                <button type="submit" name="amount_ml" value="500" class="btn"
+                    style="background: rgba(14,165,233,0.2); font-size: 0.8rem; padding: 0.5rem;">+500ml</button>
+                <button type="submit" name="amount_ml" value="1000" class="btn"
+                    style="background: rgba(14,165,233,0.25); font-size: 0.8rem; padding: 0.5rem;">+1L</button>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="number" name="custom_amount_ml" placeholder="Custom ml"
+                    style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.5rem; color: white; width: 100%;">
+                <button type="submit" class="btn" style="width: auto; padding: 0.5rem 1rem;">Log</button>
+            </div>
+        </form>
+
+        <div style="margin-top: 2rem;">
+            <h3 class="card-title" style="font-size: 1rem; margin-bottom: 1rem;">Recent Hydration</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for log in recent_water_logs %}
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i data-lucide="droplet" style="width: 14px; height: 14px; color: #0ea5e9;"></i>
+                        <span style="font-weight: 600;">{{ log.amount_ml }}ml</span>
+                    </div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ log.time }}</span>
+                </div>
+                {% else %}
+                <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin: 1rem 0;">No logs yet
+                    today.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="margin-top: 2.5rem;">
+            <h3 class="card-title" style="font-size: 1rem; margin-bottom: 0.5rem;">7-Day Intake Trend</h3>
+            <div class="chart-wrapper" style="height: 120px;">
+                <canvas id="volumeTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Calculator -->
+    <div class="glass-container">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <i data-lucide="calculator" style="width: 20px; height: 20px; color: #10b981;"></i>
+            <h3 class="card-title" style="margin-bottom: 0;">Burn Estimator</h3>
+        </div>
+        <form action="/add_activity" method="POST">
+            <div class="form-group">
+                <select name="activity_name" id="activity_name">
+                    <option value="Running">Running</option>
+                    <option value="Walking">Walking</option>
+                    <option value="Cycling">Cycling</option>
+                    <option value="Gym">Gym/Weightlifting</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="number" name="duration" id="duration" placeholder="Duration (mins)" required>
+            </div>
+            <div class="form-group" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; padding: 0 0.5rem;">
+                    <span>Calculated Burn:</span>
+                    <span id="burned-display">0 kcal</span>
+                </div>
+                <input type="hidden" name="calories_burned" id="burned">
+            </div>
+            <button type="submit" class="btn" style="background: linear-gradient(to right, #10b981, #059669);">Log
+                Activity</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Activity calculator logic
+    document.getElementById('duration').addEventListener('input', function (e) {
+        const duration = e.target.value;
+        const activity = document.getElementById('activity_name').value;
+        let met = 5;
+        if (activity === 'Running') met = 10;
+        if (activity === 'Walking') met = 3.5;
+        if (activity === 'Cycling') met = 8;
+        if (activity === 'Gym') met = 6;
+        const burned = Math.round(met * 70 * (duration / 60));
+        document.getElementById('burned').value = burned;
+        document.getElementById('burned-display').innerText = burned + ' kcal';
+    });
+
+    // 1. 7-Day Volume Intake Trend (Line Chart)
+    const trendCtx = document.getElementById('volumeTrendChart').getContext('2d');
+    const waterTrends = {{ water_trends| tojson }};
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: waterTrends.map(d => d.date),
+            datasets: [{
+                label: 'Intake (ml)',
+                data: waterTrends.map(d => d.total),
+                borderColor: '#0ea5e9',
+                backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#fff',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                }
+            }
+        }
+    });
+
+    // Initialize Lucide Icons again for dynamic content if needed
+    lucide.createIcons();
+
+    // Food Auto-fill logic
+    const foodList = document.getElementById('food-list');
+    const nameInput = document.getElementById('meal_name');
+    const caloriesInput = document.getElementById('meal_calories');
+    let foodData = [];
+
+    // Fetch food data for autocomplete
+    async function fetchFoodData() {
+        try {
+            const response = await fetch('/api/food');
+            foodData = await response.json();
+
+            // Populate datalist
+            foodList.innerHTML = '';
+            foodData.forEach(food => {
+                const option = document.createElement('option');
+                option.value = food.name;
+                foodList.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error fetching food data:', error);
+        }
+    }
+
+    // Auto-fill calories when a match is found
+    nameInput.addEventListener('input', function (e) {
+        const val = e.target.value.toLowerCase();
+        const match = foodData.find(f => f.name.toLowerCase() === val);
+        if (match) {
+            caloriesInput.value = match.calories;
+            // Visual feedback
+            caloriesInput.style.borderColor = 'var(--primary-color)';
+            setTimeout(() => caloriesInput.style.borderColor = '', 1000);
+        }
+    });
+
+    fetchFoodData();
+</script>
+{% endblock %}

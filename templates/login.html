@@ -1,0 +1,108 @@
+<!--
+  File: login.html - Authentication View (Login & Registration)
+  
+  WHAT IT DOES:
+  - Presents user login and signup interfaces in a clean glassmorphism card.
+  - Captures username, email, password, and initial daily calorie target.
+  - Provides JavaScript toggle between Login and Sign Up views with inline validation feedback.
+  
+  WHY IT IS USED:
+  - Acts as the primary security gateway for users accessing their fitness accounts.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyFitness Buddy - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="auth-wrapper">
+        <div class="glass-container auth-card">
+            <div id="login-form">
+                <h1>Welcome Back</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Login to track your progress</p>
+
+                {% if error %}
+                <p style="color: var(--accent-color); margin-bottom: 1rem; font-size: 0.9rem;">{{ error }}</p>
+                {% endif %}
+                {% if success %}
+                <p style="color: #10b981; margin-bottom: 1rem; font-size: 0.9rem;">{{ success }}</p>
+                {% endif %}
+
+                <form action="/login" method="POST">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+                <div class="auth-toggle">
+                    Don't have an account? <a href="#" onclick="toggleAuth()">Sign up</a>
+                </div>
+            </div>
+
+            <div id="signup-form" style="display: none;">
+                <h1>Join Us</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Start your health journey today</p>
+
+                {% if signup_error %}
+                <p style="color: var(--accent-color); margin-bottom: 1rem; font-size: 0.9rem;">{{ signup_error }}</p>
+                {% endif %}
+
+                <form action="/signup" method="POST">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Calorie Goal</label>
+                        <input type="number" name="target_calories" value="2000" required>
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                <div class="auth-toggle">
+                    Already have an account? <a href="#" onclick="toggleAuth()">Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleAuth() {
+            const login = document.getElementById('login-form');
+            const signup = document.getElementById('signup-form');
+            if (login.style.display === 'none') {
+                login.style.display = 'block';
+                signup.style.display = 'none';
+            } else {
+                login.style.display = 'none';
+                signup.style.display = 'block';
+            }
+        }
+
+        // Show signup if there was an error
+        {% if signup_error %}
+        toggleAuth();
+        {% endif %}
+    </script>
+</body>
+
+</html>

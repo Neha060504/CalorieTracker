@@ -1,0 +1,473 @@
+<!--
+  File: recipes.html - 'Chef Naya' AI Recipe Generator
+  
+  WHAT IT DOES:
+  - Smart recipe studio where users list available pantry ingredients and culinary preferences.
+  - Queries Google Gemini to generate healthy, authentic recipes tailored to Indian cuisine.
+  - Automatically filters recipes against user allergies, diseases (e.g. Diabetes), and health constraints.
+  
+  WHY IT IS USED:
+  - Solves the everyday dilemma of healthy cooking with whatever ingredients the user has at home.
+-->
+
+{% extends "layout.html" %}
+
+{% block title %}Indian Health Kitchen - Naya{% endblock %}
+
+{% block content %}
+<div class="hero-section" style="text-align: left; padding-left: 1rem; margin-bottom: 3rem;">
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <i data-lucide="chef-hat" style="width: 42px; height: 42px; color: var(--primary);"></i>
+        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0;">Indian Health Kitchen</h1>
+    </div>
+    <p style="color: var(--text-muted); font-size: 1.1rem; padding-left: 3.5rem;">Global flavors, authentic Indian roots, optimized for your health and calories.</p>
+</div>
+
+<style>
+    .recipe-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 2.5rem;
+        align-items: start;
+        margin-top: 1rem;
+    }
+    @media (max-width: 1024px) {
+        .recipe-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    .sticky-history {
+        position: sticky;
+        top: 2rem;
+    }
+</style>
+
+<div class="recipe-layout">
+    <!-- Left Sidebar: History -->
+    <div class="sticky-history">
+        <div class="glass-container">
+            <h3 class="card-title" style="margin-bottom: 1.5rem; color: #f59e0b;">Recent Recipes</h3>
+            <div id="recipe-history-list" style="display: grid; gap: 1rem;">
+                <p style="color: var(--text-muted); text-align: center;">No saved recipes yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Content: Generator -->
+    <div>
+        <div class="glass-container" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <i data-lucide="chef-hat" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+                <h3 class="card-title" style="margin-bottom: 0;">What's in your kitchen?</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">Select Cuisine</label>
+                    <select id="cuisine-type" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; padding: 0.75rem 1rem; color: white; outline: none;">
+                        <option value="Any Cuisine" selected>Any Cuisine (Global/Fusion)</option>
+                        <option value="North Indian">North Indian (Classic)</option>
+                        <option value="South Indian">South Indian (Light & Spicy)</option>
+                        <option value="Punjabi">Punjabi (Hearty & Rich)</option>
+                        <option value="Bengali">Bengali (Coastal & Subtle)</option>
+                        <option value="Gujarati">Gujarati (Sweet & Savory)</option>
+                        <option value="Maharashtrian">Maharashtrian (Bold & Spicy)</option>
+                        <option value="Indo-Chinese">Indo-Chinese Fusion</option>
+                        <option value="Italian">Italian (Healthy Pasta/Salads)</option>
+                        <option value="Mexican">Mexican (High Fiber & Protein)</option>
+                        <option value="Mediterranean">Mediterranean (Heart Healthy)</option>
+                        <option value="Japanese">Japanese (Clean & Minimalist)</option>
+                        <option value="Continental">Continental (Modern European)</option>
+                        <option value="Healthy Indian">Healthy Indian Fusion</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">Health Goal</label>
+                    <select id="dietary-focus" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; padding: 0.75rem 1rem; color: white; outline: none;">
+                        <option value="Balanced">Balanced Diet</option>
+                        <option value="High Protein">High Protein (Muscle)</option>
+                        <option value="Low Carb">Low Carb (Keto Friendly)</option>
+                        <option value="Weight Loss">Weight Loss (Low Calorie)</option>
+                        <option value="Detox">Clean & Detox</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ingredient-list" style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">Available Ingredients</label>
+                <div class="ingredient-row" style="display: flex; gap: 0.5rem;">
+                    <input type="text" class="ingredient-item" placeholder="E.g., Paneer, Spinach, Oats..." 
+                           style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.75rem 1rem; color: white;">
+                    <button type="button" class="remove-ingredient" style="background: rgba(239, 68, 68, 0.1); border: none; color: #ef4444; width: 40px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="minus" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <button id="add-ingredient" type="button" class="btn" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--glass-border); margin-bottom: 2rem; width: auto; padding: 0.5rem 1rem; color: var(--text-muted);">
+                <i data-lucide="plus" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Add Ingredient
+            </button>
+
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">Taste Customization</label>
+                <textarea id="special-notes" placeholder="E.g., Make it extra spicy, less oil, under 15 mins..." 
+                          style="width: 100%; min-height: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: white; line-height: 1.6; resize: vertical;"></textarea>
+            </div>
+            
+            <button id="generate-btn" class="btn" style="background: linear-gradient(to right, #f59e0b, #d97706); font-weight: 700; height: 55px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                <i data-lucide="sparkles" style="width: 20px; height: 20px;"></i>
+                Generate Premium Recipes
+            </button>
+        </div>
+
+        <!-- Results Area -->
+        <div id="loading-state" style="display: none; text-align: center; margin-top: 2rem;">
+            <div class="glass-container" style="display: inline-block; padding: 2rem 3rem;">
+                <i data-lucide="loader" style="width: 40px; height: 40px; color: #f59e0b; animation: spin 2s linear infinite; margin-bottom: 1rem;"></i>
+                <h3 style="margin-bottom: 0.5rem;">Chef Gemini is thinking...</h3>
+                <p style="color: var(--text-muted);">Finding the perfect dish with your ingredients.</p>
+            </div>
+        </div>
+
+        <div id="recipe-results" style="display: grid; gap: 2rem;">
+            <!-- AI Content will be injected here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const generateBtn = document.getElementById('generate-btn');
+    const ingredientsInput = document.getElementById('ingredients-input');
+    const recipeResults = document.getElementById('recipe-results');
+    const loadingState = document.getElementById('loading-state');
+
+    const ingredientsContainer = document.getElementById('ingredient-list');
+    const addIngredientBtn = document.getElementById('add-ingredient');
+    const specialNotesInput = document.getElementById('special-notes');
+
+    // Add Ingredient functionality
+    addIngredientBtn.addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'ingredient-row';
+        row.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.75rem;';
+        row.innerHTML = `
+            <input type="text" class="ingredient-item" placeholder="E.g., 2 eggs" 
+                   style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.75rem 1rem; color: white;">
+            <button type="button" class="remove-ingredient" style="background: rgba(239, 68, 68, 0.1); border: none; color: #ef4444; width: 40px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="minus" style="width: 16px; height: 16px;"></i>
+            </button>
+        `;
+        ingredientsContainer.appendChild(row);
+        if (window.lucide) lucide.createIcons();
+    });
+
+    // Remove Ingredient (Event Delegation)
+    ingredientsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-ingredient');
+        if (btn) {
+            const rows = ingredientsContainer.querySelectorAll('.ingredient-row');
+            if (rows.length > 1) {
+                btn.closest('.ingredient-row').remove();
+            } else {
+                // Just clear the first one if it's the only one left
+                rows[0].querySelector('input').value = '';
+            }
+        }
+    });
+
+    const loadHistory = async () => {
+        try {
+            const response = await fetch('/api/recipe_history');
+            const data = await response.json();
+            if(data.history && data.history.length > 0) {
+                const historyList = document.getElementById('recipe-history-list');
+                historyList.innerHTML = '';
+                data.history.forEach(item => {
+                    const date = new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const div = document.createElement('div');
+                    div.className = 'recipe-card';
+                    div.style.cssText = 'padding: 1.5rem; margin-bottom: 0; cursor: pointer; border-left: 4px solid #f59e0b;';
+                    div.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Generated on ${date}</span>
+                                <h4 style="margin: 0.25rem 0; color: white;">${item.ingredients.substring(0, 50)}...</h4>
+                            </div>
+                            <i data-lucide="arrow-up-right" style="width: 20px; height: 20px; color: #f59e0b;"></i>
+                        </div>
+                    `;
+                    div.onclick = () => {
+                        recipeResults.scrollIntoView({ behavior: 'smooth' });
+                        recipeResults.innerHTML = `
+                            <div class="recipe-card">
+                                <div class="recipe-content">
+                                    ${item.recipe_text}
+                                </div>
+                            </div>
+                        `;
+                        if (window.lucide) lucide.createIcons();
+                    };
+                    historyList.appendChild(div);
+                });
+                if (window.lucide) lucide.createIcons();
+            }
+        } catch(e) { console.error('Failed to load history', e); }
+    };
+
+    loadHistory();
+
+    generateBtn.addEventListener('click', async () => {
+        const ingredientInputs = document.querySelectorAll('.ingredient-item');
+        const ingredients = Array.from(ingredientInputs)
+                                .map(i => i.value.trim())
+                                .filter(i => i !== "");
+        
+        if (ingredients.length === 0) {
+            alert('Please add at least one ingredient.');
+            return;
+        }
+
+        const notes = specialNotesInput.value.trim();
+
+        // State management
+        generateBtn.disabled = true;
+        recipeResults.innerHTML = '';
+        loadingState.style.display = 'block';
+        recipeResults.style.display = 'none';
+
+        try {
+            const cuisine = document.getElementById('cuisine-type').value;
+            const focus = document.getElementById('dietary-focus').value;
+
+            const response = await fetch('/generate_recipes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    ingredients: ingredients,
+                    notes: notes,
+                    cuisine: cuisine,
+                    focus: focus
+                })
+            });
+
+            if (!response.ok) {
+                loadingState.style.display = 'none';
+                recipeResults.style.display = 'grid';
+                const errorData = await response.json();
+                recipeResults.innerHTML = `
+                    <div class="recipe-card" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <h3 style="color: #ef4444; margin-bottom: 1rem;">Chef's Error</h3>
+                        <p>${errorData.error || 'Connection error'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let firstChunkReceived = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                if (!firstChunkReceived) {
+                    firstChunkReceived = true;
+                    loadingState.style.display = 'none';
+                    recipeResults.style.display = 'grid';
+                    recipeResults.innerHTML = `
+                        <div class="recipe-card">
+                            <div class="recipe-content" id="streaming-content" style="white-space: pre-wrap;"></div>
+                        </div>
+                    `;
+                }
+
+                const streamingContent = document.getElementById('streaming-content');
+                if (streamingContent) {
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullContent += chunk;
+                    streamingContent.innerText = fullContent;
+                }
+            }
+
+            const streamingContent = document.getElementById('streaming-content');
+            if (streamingContent) {
+                // Final render as HTML for the premium look
+                streamingContent.style.whiteSpace = 'normal';
+                streamingContent.innerHTML = fullContent;
+                if (window.lucide) lucide.createIcons();
+                
+                // Refresh history
+                loadHistory();
+            }
+
+        } catch (error) {
+            loadingState.style.display = 'none';
+            recipeResults.style.display = 'grid';
+            recipeResults.innerHTML = `
+                <div class="glass-container" style="border-color: rgba(239, 68, 68, 0.2);">
+                    <h3 style="color: #ef4444; margin-bottom: 1rem;">Network Error</h3>
+                    <p>Could not connect to the chef. Please try again later.</p>
+                </div>
+            `;
+        } finally {
+            generateBtn.disabled = false;
+        }
+    });
+</script>
+
+<style>
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .recipe-card {
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        transition: all 0.4s ease;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        animation: slideUp 0.6s ease forwards;
+        color: #f8fafc;
+    }
+    
+    .recipe-card:hover {
+        background: rgba(15, 23, 42, 0.5);
+        border-color: rgba(245, 158, 11, 0.4);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+    
+    .recipe-content {
+        line-height: 1.7;
+    }
+
+    .recipe-content h1, .recipe-content h2 {
+        color: #f59e0b;
+        font-weight: 800;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid rgba(245, 158, 11, 0.2);
+        padding-bottom: 0.5rem;
+    }
+
+    .recipe-content h3 { 
+        color: #f59e0b; 
+        font-size: 1.6rem; 
+        font-weight: 800; 
+        margin-top: 2.5rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .recipe-content h3::before {
+        content: '';
+        width: 4px;
+        height: 1.5rem;
+        background: #f59e0b;
+        border-radius: 2px;
+    }
+
+    .recipe-content p {
+        color: #cbd5e1;
+        margin-bottom: 1.5rem;
+        font-size: 1.05rem;
+    }
+
+    .recipe-content b, .recipe-content strong {
+        color: #fff;
+        font-weight: 700;
+        background: rgba(245, 158, 11, 0.1);
+        padding: 0 4px;
+        border-radius: 4px;
+    }
+    
+    .recipe-content ul, .recipe-content ol { 
+        margin-bottom: 2rem;
+        padding-left: 0;
+        list-style: none;
+    }
+
+    .recipe-content li { 
+        margin-bottom: 0.85rem; 
+        color: #e2e8f0; 
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .recipe-content ol li::before {
+        content: counter(item);
+        counter-increment: item;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: #f59e0b;
+        color: #0f172a;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    
+    .recipe-content ol {
+        counter-reset: item;
+    }
+
+    .recipe-content hr {
+        border: 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        margin: 2.5rem 0;
+    }
+    .recipe-content p {
+        color: #cbd5e1;
+        margin-bottom: 1.5rem;
+        font-size: 1.05rem;
+        line-height: 1.7;
+    }
+
+    #generate-btn {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    #generate-btn:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    }
+
+    #generate-btn:active {
+        transform: scale(0.98);
+    }
+
+    #generate-btn::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+        transform: scale(0);
+        transition: transform 0.6s ease-out;
+        pointer-events: none;
+    }
+
+    #generate-btn:hover::after {
+        transform: scale(1);
+    }
+</style>
+{% endblock %}

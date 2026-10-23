@@ -1,0 +1,170 @@
+<!--
+  File: activities.html - Exercise & Activity Logging View
+  
+  WHAT IT DOES:
+  - Enables users to log physical workouts, sports, walking, running, and gym exercises.
+  - Calculates estimated calories burned based on workout duration and activity intensity.
+  - Summarizes daily net burn to adjust overall calorie budget.
+  
+  WHY IT IS USED:
+  - Provides accurate energy expenditure tracking to balance out food calories.
+-->
+
+{% extends "layout.html" %}
+
+{% block title %}Activity Log - MyFitness Buddy{% endblock %}
+
+{% block content %}
+<div class="grid" style="margin-bottom: 2rem;">
+    <!-- Activity Breakdown Bar Chart -->
+    <div class="glass-container">
+        <h3 class="card-title">Exercise Distribution (Mins)</h3>
+        <div class="chart-wrapper" style="height: 250px;">
+            <canvas id="activityDistChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Calories Burned Trend Line Chart -->
+    <div class="glass-container">
+        <h3 class="card-title">Calories Burned Trend</h3>
+        <div class="chart-wrapper" style="height: 250px;">
+            <canvas id="burnTrendChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="glass-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-weight: 700;">Physical Activity History</h2>
+        <button class="btn" style="width: auto; padding: 0.5rem 1.5rem;"
+            onclick="document.getElementById('add-activity-modal').style.display='flex'">+ Log Exercise</button>
+    </div>
+
+    <div class="data-table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Activity</th>
+                    <th>Duration</th>
+                    <th>Calories Burned</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for act in activities %}
+                <tr>
+                    <td>{{ act['date'] }}</td>
+                    <td style="font-weight: 600;">{{ act['activity_name'] }}</td>
+                    <td>{{ act['duration_mins'] }} mins</td>
+                    <td style="color: #10b981; font-weight: 600;">-{{ act['calories_burned'] }} kcal</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Activity Modal -->
+<div id="add-activity-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="glass-container" style="width: 100%; max-width: 400px;">
+        <h3 class="card-title">Log New Activity</h3>
+        <form action="/add_activity" method="POST">
+            <div class="form-group">
+                <label>Exercise Type</label>
+                <select name="activity_name" id="modal_activity_name">
+                    <option value="Running">Running</option>
+                    <option value="Walking">Walking</option>
+                    <option value="Cycling">Cycling</option>
+                    <option value="Gym">Gym Session</option>
+                    <option value="Swimming">Swimming</option>
+                    <option value="Yoga">Yoga</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Duration (Minutes)</label>
+                <input type="number" name="duration" id="modal_duration" required>
+            </div>
+            <div class="form-group">
+                <label>Calories Burned (Estimated)</label>
+                <input type="number" name="calories_burned" id="modal_burned" required>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">Log Activity</button>
+                <button type="button" class="btn" style="background: rgba(255,255,255,0.1);"
+                    onclick="document.getElementById('add-activity-modal').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 1. Activity Distribution Chart (Bar)
+    const distCtx = document.getElementById('activityDistChart').getContext('2d');
+    const distData = {{ activity_dist| tojson }};
+    new Chart(distCtx, {
+        type: 'bar',
+        data: {
+            labels: distData.map(d => d.activity_name),
+            datasets: [{
+                label: 'Total Minutes',
+                data: distData.map(d => d.total_mins),
+                backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // 2. Burn Trend Chart (Line)
+    const burnCtx = document.getElementById('burnTrendChart').getContext('2d');
+    const burnData = {{ burn_trend| tojson }};
+    new Chart(burnCtx, {
+        type: 'line',
+        data: {
+            labels: burnData.map(d => d.date),
+            datasets: [{
+                label: 'Daily Burned',
+                data: burnData.map(d => d.daily_burn),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // Modal duration logic (preserved)
+    document.getElementById('modal_duration').addEventListener('input', function (e) {
+        const duration = e.target.value;
+        const activity = document.getElementById('modal_activity_name').value;
+        let met = 5;
+        if (activity === 'Running') met = 10;
+        if (activity === 'Walking') met = 3.5;
+        if (activity === 'Cycling') met = 8;
+        if (activity === 'Gym') met = 6;
+        if (activity === 'Yoga') met = 3;
+        const burned = Math.round(met * 70 * (duration / 60));
+        document.getElementById('modal_burned').value = burned;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+flask
+mysql-connector-python
+passlib
+google-genai
+python-dotenv
+gunicorn

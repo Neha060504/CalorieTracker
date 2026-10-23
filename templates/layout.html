@@ -1,0 +1,228 @@
+<!--
+  File: layout.html - Master Base UI Template
+  
+  WHAT IT DOES:
+  - Defines the global responsive layout skeleton, CSS dependencies, Google Fonts, and dark/glassmorphic theme.
+  - Implements the top navigation bar with quick links to Dashboard, Meals, Activities, AI Coach, Recipes, Reports, and Settings.
+  - Houses the Jinja2 content blocks for child page rendering.
+  
+  WHY IT IS USED:
+  - Ensures a consistent, modern visual identity across all screens in MyFitness Buddy.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MyFitness Buddy{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="/" class="sidebar-logo" style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="dumbbell" style="stroke: var(--primary-color);"></i>
+                MyFitness<span>Buddy</span>
+            </a>
+            <nav class="nav-links">
+                <li class="nav-item">
+                    <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/meals" class="nav-link {% if active_page == 'meals' %}active{% endif %}">
+                        <span>Meals Log</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/activities" class="nav-link {% if active_page == 'activities' %}active{% endif %}">
+                        <span>Physical Activity</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/reports" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+                        <span>Reports & Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/ai_coach" class="nav-link {% if active_page == 'ai_coach' %}active{% endif %}"
+                        style="color: #a855f7;">
+                        <span><i data-lucide="sparkles"
+                                style="width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"></i>AI
+                            Coach</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/recipes" class="nav-link {% if active_page == 'recipes' %}active{% endif %}"
+                        style="color: #f59e0b;">
+                        <span><i data-lucide="chef-hat"
+                                style="width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"></i>Recipe
+                            Gen</span>
+                    </a>
+                </li>
+                <li class="nav-item" style="margin-top: 2rem;">
+                    <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </nav>
+            <div class="user-profile"
+                style="margin-top: auto; padding-top: 2rem; border-top: 1px solid var(--glass-border);">
+                <span style="display: block; font-size: 0.9rem; font-weight: 600;">{{ session['username'] }}</span>
+                <a href="/logout"
+                    style="font-size: 0.8rem; color: var(--accent-color); text-decoration: none;">Logout</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Floating AI Chat -->
+    <button id="ai-chat-fab" class="chat-fab">
+        <i data-lucide="sparkles"></i>
+    </button>
+
+    <div id="ai-chat-window" class="chat-window">
+        <div class="chat-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                <i data-lucide="bot" style="color: #a855f7; width: 20px; height: 20px;"></i>
+                Gemini Coach
+            </div>
+            <button id="ai-close-btn" class="chat-close">
+                <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            </button>
+        </div>
+        <div id="ai-chat-messages" class="chat-messages">
+            <div class="message ai">Hi {{ session['username'] }}! I'm your AI health coach. How can I help you today?
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="ai-chat-input" placeholder="Ask about your diet or workouts..." autocomplete="off">
+            <button id="ai-send-btn">
+                <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global chat logic
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize icons globally for layout elements
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            const fab = document.getElementById('ai-chat-fab');
+            const chatWindow = document.getElementById('ai-chat-window');
+            const closeBtn = document.getElementById('ai-close-btn');
+            const sendBtn = document.getElementById('ai-send-btn');
+            const inputField = document.getElementById('ai-chat-input');
+            const messageArea = document.getElementById('ai-chat-messages');
+
+            if (fab) {
+                fab.addEventListener('click', () => {
+                    chatWindow.classList.add('active');
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    chatWindow.classList.remove('active');
+                });
+            }
+
+            const appendMessage = (text, sender) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${sender}`;
+                msgDiv.innerText = text; // Prevent XSS by using innerText
+                messageArea.appendChild(msgDiv);
+                messageArea.scrollTop = messageArea.scrollHeight;
+            };
+
+            const sendMessage = async () => {
+                const text = inputField.value.trim();
+                if (!text) return;
+
+                appendMessage(text, 'user');
+                inputField.value = '';
+                sendBtn.disabled = true;
+                inputField.disabled = true;
+
+                // Show thinking...
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = 'message ai';
+                aiMessageDiv.innerHTML = '<span class="typing-indicator"><i data-lucide="loader" style="width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block;"></i> AI is typing...</span>';
+                messageArea.appendChild(aiMessageDiv);
+                lucide.createIcons();
+                messageArea.scrollTop = messageArea.scrollHeight;
+
+                try {
+                    const response = await fetch('/ai_chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: text })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        aiMessageDiv.innerHTML = errorData.error || 'Connection error';
+                        return;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let firstChunkReceived = false;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        if (!firstChunkReceived) {
+                            firstChunkReceived = true;
+                            aiMessageDiv.innerHTML = '';
+                        }
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        aiMessageDiv.innerText += chunk;
+                        messageArea.scrollTop = messageArea.scrollHeight;
+                    }
+                } catch (err) {
+                    aiMessageDiv.innerHTML = '<span style="color: #ef4444;">Connection failed. Check API key.</span>';
+                } finally {
+                    sendBtn.disabled = false;
+                    inputField.disabled = false;
+                    inputField.focus();
+                }
+            };
+
+            if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+            if (inputField) {
+                inputField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendMessage();
+                });
+            }
+        });
+    </script>
+    <style>
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

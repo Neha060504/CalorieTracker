@@ -1,0 +1,245 @@
+<!--
+  File: meals.html - Meal & Nutrition Diary View
+  
+  WHAT IT DOES:
+  - Displays all logged food items and meals categorized by breakfast, lunch, dinner, and snacks.
+  - Features real-time food search autocomplete referencing the local food library database.
+  - Allows logging food portion weights and custom meal entries.
+  
+  WHY IT IS USED:
+  - Empowers users to maintain an accurate, chronological record of their daily food intake.
+-->
+
+{% extends "layout.html" %}
+
+{% block title %}Meals Log - MyFitness Buddy{% endblock %}
+
+{% block content %}
+<div class="grid" style="margin-bottom: 2rem;">
+    <!-- Meal Composition Pie Chart -->
+    <div class="glass-container">
+        <h3 class="card-title">Calorie Breakdown</h3>
+        <div class="chart-wrapper" style="height: 250px;">
+            <canvas id="breakdownChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Top Calorie Meals Bar Chart -->
+    <div class="glass-container">
+        <h3 class="card-title">Top High-Calorie Meals</h3>
+        <div class="chart-wrapper" style="height: 250px;">
+            <canvas id="topMealsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="glass-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-weight: 700;">Meals History</h2>
+        <button class="btn" style="width: auto; padding: 0.5rem 1.5rem;"
+            onclick="document.getElementById('add-meal-modal').style.display='flex'">+ Add Log</button>
+    </div>
+
+    <!-- New Search Bar with Recommendations -->
+    <div style="margin-bottom: 1.5rem; position: relative;">
+        <div
+            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;">
+            <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+        </div>
+        <input type="text" id="history-search" placeholder="Search your history or library..." list="modal-food-list"
+            style="width: 100%; padding: 0.75rem 1rem 0.75rem 3rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; transition: all 0.3s ease;"
+            autocomplete="off">
+    </div>
+
+    <div class="data-table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Meal Name</th>
+                    <th>Type</th>
+                    <th>Calories</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for meal in meals %}
+                <tr>
+                    <td>{{ meal['date'] }}</td>
+                    <td style="font-weight: 600;">{{ meal['meal_name'] }}</td>
+                    <td>
+                        <span class="badge badge-{{ meal['meal_type'] | lower }}">{{ meal['meal_type'] }}</span>
+                    </td>
+                    <td>{{ meal['calories'] }} kcal</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Simple Add Meal Modal -->
+<div id="add-meal-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="glass-container" style="width: 100%; max-width: 400px;">
+        <h3 class="card-title">Log New Meal</h3>
+        <form action="/add_meal" method="POST">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="modal_meal_name" name="meal_name" placeholder="E.g., Chicken Salad"
+                    list="modal-food-list" required autocomplete="off">
+                <datalist id="modal-food-list"></datalist>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select name="meal_type">
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snack">Snack</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Calories</label>
+                <input type="number" id="modal_meal_calories" name="calories" required>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">Save Entry</button>
+                <button type="button" class="btn" style="background: rgba(255,255,255,0.1);"
+                    onclick="document.getElementById('add-meal-modal').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 1. Breakdown Pie Chart
+    const breakCtx = document.getElementById('breakdownChart').getContext('2d');
+    const breakdownData = {{ breakdown_data| tojson }};
+    new Chart(breakCtx, {
+        type: 'pie',
+        data: {
+            labels: breakdownData.map(d => d.meal_type),
+            datasets: [{
+                data: breakdownData.map(d => d.total),
+                backgroundColor: ['#6366f1', '#0ea5e9', '#ec4899', '#f59e0b', '#8b5cf6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // 2. Top Meals Bar Chart
+    const topCtx = document.getElementById('topMealsChart').getContext('2d');
+    const topData = {{ top_meals| tojson }};
+    new Chart(topCtx, {
+        type: 'bar',
+        data: {
+            labels: topData.map(d => d.meal_name),
+            datasets: [{
+                label: 'Calories',
+                data: topData.map(d => d.calories),
+                backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                y: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // Food Auto-fill logic for Modal
+    const modalFoodList = document.getElementById('modal-food-list');
+    const modalNameInput = document.getElementById('modal_meal_name');
+    const modalCaloriesInput = document.getElementById('modal_meal_calories');
+    let foodData = [];
+
+    // Fetch food data for autocomplete
+    async function fetchFoodData() {
+        try {
+            const response = await fetch('/api/food');
+            foodData = await response.json();
+
+            // Populate datalist
+            modalFoodList.innerHTML = '';
+            foodData.forEach(food => {
+                const option = document.createElement('option');
+                option.value = food.name;
+                modalFoodList.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error fetching food data:', error);
+        }
+    }
+
+    // Auto-fill calories when a match is found
+    modalNameInput.addEventListener('input', function (e) {
+        const val = e.target.value.toLowerCase();
+        const match = foodData.find(f => f.name.toLowerCase() === val);
+        if (match) {
+            modalCaloriesInput.value = match.calories;
+            // Visual feedback
+            modalCaloriesInput.style.borderColor = 'var(--primary-color)';
+            setTimeout(() => modalCaloriesInput.style.borderColor = '', 1000);
+        }
+    });
+
+    // History Table Search and Filtering
+    const historySearch = document.getElementById('history-search');
+    const tableRows = document.querySelectorAll('.data-table tbody tr');
+
+    historySearch.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+
+        tableRows.forEach(row => {
+            const mealName = row.cells[1].textContent.toLowerCase();
+            const mealType = row.cells[2].textContent.toLowerCase();
+
+            if (mealName.includes(query) || mealType.includes(query)) {
+                row.style.display = '';
+                row.style.animation = 'fadeIn 0.3s ease';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    fetchFoodData();
+</script>
+
+<style>
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #history-search:focus {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+</style>
+{% endblock %}

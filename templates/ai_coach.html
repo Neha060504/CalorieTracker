@@ -1,0 +1,263 @@
+<!--
+  File: ai_coach.html - Intelligent Health & Nutrition Coach Interface
+  
+  WHAT IT DOES:
+  - Interactive AI coaching interface powered by Google Gemini.
+  - Generates comprehensive 7-day health evaluations, macro-nutrient analyses, and behavioral tips.
+  - Displays chat history and allows real-time interactive consultations with 'Gemini Coach'.
+  
+  WHY IT IS USED:
+  - Delivers tailored, automated wellness and lifestyle coaching for Indian dietary habits.
+-->
+
+{% extends "layout.html" %}
+
+{% block title %}AI Coach - MyFitness Buddy{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <style>
+        .coach-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2.5rem;
+            align-items: start;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .coach-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sticky-sidebar {
+            position: sticky;
+            top: 2rem;
+        }
+
+        .hero-section-coach {
+            text-align: left;
+            margin-bottom: 3rem;
+            padding-left: 1rem;
+        }
+
+        #insights-content {
+            line-height: 1.7;
+        }
+
+        #insights-content h1,
+        #insights-content h2,
+        #insights-content h3 {
+            color: #a855f7;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        #insights-content p {
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        #insights-content ul,
+        #insights-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 1.25rem;
+        }
+
+        #insights-content li {
+            margin-bottom: 0.75rem;
+        }
+
+        #insights-content b,
+        #insights-content strong {
+            color: #a855f7;
+            font-weight: 700;
+        }
+    </style>
+
+    <div class="hero-section-coach">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <i data-lucide="brain-circuit" style="width: 42px; height: 42px; color: #a855f7;"></i>
+            <h1
+                style="font-weight: 800; font-size: 2.5rem; margin-bottom: 0; background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Gemini Health Coach</h1>
+        </div>
+        <p style="color: var(--text-muted); font-size: 1.1rem; padding-left: 3.5rem;">Personalized diet and workout
+            insights powered by Google AI.</p>
+    </div>
+
+    <div class="coach-layout">
+        <!-- Left Sidebar: History -->
+        {% if user.gemini_api_key %}
+        <div class="sticky-sidebar">
+            <div class="glass-container">
+                <h3 class="card-title" style="margin-bottom: 1.5rem; color: #a855f7;">Analysis History</h3>
+                <div id="coach-history-list" style="display: grid; gap: 0.75rem;">
+                    <p style="color: var(--text-muted); text-align: center;">No previous analysis found.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Right Content: Analysis -->
+        <div style="flex: 1;">
+            {% if not user.gemini_api_key %}
+            <div class="glass-container"
+                style="background: rgba(244, 63, 94, 0.05); border-color: rgba(244, 63, 94, 0.2); text-align: center; padding: 3rem 2rem;">
+                <i data-lucide="key" style="width: 40px; height: 40px; color: #f43f5e; margin-bottom: 1rem;"></i>
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">API Key Required</h3>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">To use the AI Coach, please configure your
+                    free Google Gemini API key in the settings menu.</p>
+                <a href="/settings" class="btn"
+                    style="display: inline-block; text-decoration: none; width: auto; padding: 0.75rem 2rem;">Go to
+                    Settings</a>
+            </div>
+            {% else %}
+            <div class="glass-container" style="margin-bottom: 2rem; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 class="card-title" style="margin-bottom: 0;">Current Analysis</h3>
+                    <button id="generate-btn" class="btn"
+                        style="width: auto; padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Generate Insights
+                    </button>
+                </div>
+
+                <div id="loading-state" style="display: none; padding: 3rem 0; text-align: center;">
+                    <i data-lucide="loader"
+                        style="width: 40px; height: 40px; color: #a855f7; animation: spin 1s linear infinite; margin-bottom: 1rem; display: inline-block;"></i>
+                    <p style="color: var(--text-muted);">Analyzing your logs... Real-time results appearing soon.</p>
+                </div>
+
+                <div id="insights-content" style="font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,0.9);">
+                    <div style="text-align: center; padding: 2rem 0; color: var(--text-muted); opacity: 0.7;">
+                        <i data-lucide="file-bar-chart" style="width: 32px; height: 32px; margin-bottom: 1rem;"></i>
+                        <p>Select a past analysis from the left or generate a new one.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const genBtn = document.getElementById('generate-btn');
+            const loading = document.getElementById('loading-state');
+            const content = document.getElementById('insights-content');
+
+            if (genBtn) {
+                const loadHistory = async () => {
+                    try {
+                        const response = await fetch('/api/coach_history');
+                        const data = await response.json();
+                        if (data.history && data.history.length > 0) {
+                            const historyList = document.getElementById('coach-history-list');
+                            historyList.innerHTML = '';
+                            data.history.forEach(item => {
+                                const date = new Date(item.timestamp).toLocaleDateString('en-US', {
+                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                });
+                                const div = document.createElement('div');
+                                div.className = 'history-item';
+                                div.style.cssText = 'padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem;';
+                                div.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 600; color: #a855f7;">Analysis from ${date}</span>
+                                    <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                                </div>
+                            `;
+                                div.onclick = () => {
+                                    content.innerHTML = item.analysis_text;
+                                    content.style.display = 'block';
+                                    content.scrollIntoView({ behavior: 'smooth' });
+                                    if (window.lucide) lucide.createIcons();
+                                };
+                                historyList.appendChild(div);
+                            });
+                            if (window.lucide) lucide.createIcons();
+                        }
+                    } catch (e) { console.error('Failed to load history', e); }
+                };
+
+                loadHistory();
+
+                genBtn.addEventListener('click', async () => {
+                    genBtn.disabled = true;
+                    genBtn.style.opacity = '0.5';
+                    content.style.display = 'none';
+                    loading.style.display = 'block';
+
+                    try {
+                        const response = await fetch('/generate_insights', { method: 'POST' });
+
+                        if (!response.ok) {
+                            loading.style.display = 'none';
+                            content.style.display = 'block';
+                            const errorData = await response.json();
+                            content.innerHTML = `<div style="color: #ef4444; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">Error: ${errorData.error || 'Connection error'}</div>`;
+                            return;
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let fullInsights = '';
+                        let firstChunkReceived = false;
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            if (!firstChunkReceived) {
+                                firstChunkReceived = true;
+                                loading.style.display = 'none';
+                                content.style.display = 'block';
+                                content.innerHTML = '';
+                                content.style.whiteSpace = 'pre-wrap';
+                            }
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            fullInsights += chunk;
+                            content.innerText = fullInsights;
+                        }
+
+                        // Final HTML render and styling
+                        content.style.whiteSpace = 'normal';
+                        content.innerHTML = fullInsights;
+
+                        const lists = content.querySelectorAll('ul');
+                        lists.forEach(ul => {
+                            ul.style.paddingLeft = '1.5rem';
+                            ul.style.marginBottom = '1.5rem';
+                            ul.style.marginTop = '0.5rem';
+                        });
+                        const items = content.querySelectorAll('li');
+                        items.forEach(li => {
+                            li.style.marginBottom = '0.5rem';
+                        });
+
+                        // Refresh history
+                        loadHistory();
+                    } catch (e) {
+                        content.innerHTML = `<div style="color: #ef4444; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">Failed to connect to the AI service.</div>`;
+                    } finally {
+                        loading.style.display = 'none';
+                        content.style.display = 'block';
+                        genBtn.disabled = false;
+                        genBtn.style.opacity = '1';
+                    }
+                });
+            }
+        });
+    </script>
+    <style>
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    {% endblock %}
